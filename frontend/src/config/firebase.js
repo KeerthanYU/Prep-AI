@@ -2,6 +2,8 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   connectAuthEmulator,
+  setPersistence,
+  browserLocalPersistence,
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -16,6 +18,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
+// Enable persistent login
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.warn('Persistence setup failed:', error.message);
+});
+
 // Connect to emulator in development
 if (import.meta.env.DEV) {
   try {
@@ -23,7 +30,7 @@ if (import.meta.env.DEV) {
       disableWarnings: true,
     });
   } catch (error) {
-    // Emulator already connected
+    // Emulator already connected or other error
   }
 }
 

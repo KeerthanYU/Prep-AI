@@ -1,71 +1,39 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiMail, FiLock, FiUser } from 'react-icons/fi';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth } from '../config/firebase';
+import { FiLoader } from 'react-icons/fi';
+import { FcGoogle } from 'react-icons/fc';
 import Header from '../components/Header';
-import authService from '../services/authService';
-import apiService from '../services/apiService';
 
 const Login = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    displayName: '',
-    confirmPassword: '',
-  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
+  /**
+   * Handle Google Sign-In
+   */
+  const handleGoogleSignIn = async () => {
     try {
-      await authService.login(formData.email, formData.password);
+      setError('');
+      setLoading(true);
+
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      // Firebase will handle the auth state change
+      // AuthContext will automatically register/login user and set session token
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    // Validate form
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      await authService.register(
-        formData.email,
-        formData.password,
-        formData.displayName
-      );
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.message);
+      console.error('Google sign-in error:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in popup was closed');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Sign-in popup was blocked. Please allow popups and try again.');
+      } else {
+        setError(err.message || 'Google sign-in failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -75,145 +43,123 @@ const Login = () => {
     <>
       <Header />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="max-w-md mx-auto">
-          <div className="card">
-            {/* Tabs */}
-            <div className="flex gap-4 mb-8 border-b">
-              <button
-                onClick={() => {
-                  setIsLogin(true);
-                  setError('');
-                }}
-                className={`pb-4 font-medium border-b-2 transition-colors ${
-                  isLogin
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Login
-              </button>
-              <button
-                onClick={() => {
-                  setIsLogin(false);
-                  setError('');
-                }}
-                className={`pb-4 font-medium border-b-2 transition-colors ${
-                  !isLogin
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Register
-              </button>
+      <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                PrepMate AI
+              </h1>
+              <p className="text-gray-600">
+                Your Personal Interview Coach
+              </p>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-4 text-sm">
-                {error}
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-6 text-sm">
+                ⚠️ {error}
               </div>
             )}
 
-            {/* Form */}
-            <form
-              onSubmit={isLogin ? handleLogin : handleRegister}
-              className="space-y-4"
+            {/* Google Sign-In Button */}
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mb-6"
             >
-              {!isLogin && (
-                <div>
-                  <label className="label">
-                    <FiUser className="inline mr-2" />
-                    Display Name
-                  </label>
-                  <input
-                    type="text"
-                    name="displayName"
-                    value={formData.displayName}
-                    onChange={handleChange}
-                    placeholder="Your name"
-                    className="input"
-                    required
-                  />
-                </div>
+              {loading ? (
+                <>
+                  <FiLoader className="animate-spin" size={20} />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <FcGoogle size={20} />
+                  Sign in with Google
+                </>
               )}
+            </button>
 
-              <div>
-                <label className="label">
-                  <FiMail className="inline mr-2" />
-                  Email
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="your@email.com"
-                  className="input"
-                  required
-                />
+            {/* Divider */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
               </div>
-
-              <div>
-                <label className="label">
-                  <FiLock className="inline mr-2" />
-                  Password
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="input"
-                  required
-                  minLength="6"
-                />
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">
+                  Secure & Fast
+                </span>
               </div>
+            </div>
 
-              {!isLogin && (
-                <div>
-                  <label className="label">
-                    <FiLock className="inline mr-2" />
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    className="input"
-                    required
-                  />
+            {/* Features */}
+            <div className="space-y-3 mb-8">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <div className="flex items-center justify-center h-5 w-5 rounded-md bg-blue-500 text-white text-sm font-bold">
+                    ✓
+                  </div>
                 </div>
-              )}
+                <p className="text-sm text-gray-700">
+                  <strong>Secure Firebase Auth:</strong> Your credentials are protected
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <div className="flex items-center justify-center h-5 w-5 rounded-md bg-blue-500 text-white text-sm font-bold">
+                    ✓
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700">
+                  <strong>AI-Powered Feedback:</strong> Get instant interview feedback
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <div className="flex items-center justify-center h-5 w-5 rounded-md bg-blue-500 text-white text-sm font-bold">
+                    ✓
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700">
+                  <strong>Track Progress:</strong> Monitor your improvement over time
+                </p>
+              </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary w-full"
-              >
-                {loading
-                  ? 'Loading...'
-                  : isLogin
-                  ? 'Login to PrepMate'
-                  : 'Create Account'}
-              </button>
-            </form>
+            {/* Footer */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                By signing in, you agree to our{' '}
+                <a href="#" className="text-blue-600 hover:text-blue-700 underline">
+                  Terms of Service
+                </a>
+                {' '}and{' '}
+                <a href="#" className="text-blue-600 hover:text-blue-700 underline">
+                  Privacy Policy
+                </a>
+              </p>
+            </div>
 
             {/* Back to home */}
-            <div className="mt-6 text-center">
-              <Link to="/" className="text-blue-600 hover:text-blue-700 text-sm">
+            <div className="mt-6 text-center pt-6 border-t border-gray-200">
+              <Link
+                to="/"
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+              >
                 ← Back to Home
               </Link>
             </div>
           </div>
 
-          {/* Features Reminder */}
+          {/* Additional Info */}
           <div className="mt-8 text-center text-gray-600 text-sm">
-            <p className="mb-4">✨ Free, AI-powered interview coaching</p>
-            <p>No credit card required. Start practicing now!</p>
+            <p className="mb-2">🎯 Free AI-powered interview coaching</p>
+            <p className="mb-4">Start practicing and ace your interviews</p>
+            <div className="inline-block bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-800">
+              Production-Grade Security • Real-Time Feedback • Analytics Dashboard
+            </div>
           </div>
         </div>
       </main>
