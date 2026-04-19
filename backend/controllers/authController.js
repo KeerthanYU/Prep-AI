@@ -71,6 +71,14 @@ class AuthController {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
+      // Check if user has a password (they might have registered via Google)
+      if (!user.password) {
+        return res.status(401).json({ 
+          message: 'This account was created using Google. Please use Google Login.',
+          debug_reason: 'Password missing for this account'
+        });
+      }
+
       const match = await bcrypt.compare(password, user.password);
 
       if (!match) {
@@ -92,11 +100,10 @@ class AuthController {
   // GOOGLE LOGIN
   async googleLogin(req, res, next) {
     console.log('>>> [DEBUG] Google Login Attempt');
-    console.log('>>> [DEBUG] Request Body:', JSON.stringify(req.body, null, 2));
-    console.log("ADMIN INITIALIZED:", admin.apps.length);
-    console.log("TOKEN RECEIVED:", idToken?.slice(0, 40));
     try {
       const { idToken } = req.body;
+      console.log("TOKEN RECEIVED:", idToken?.slice(0, 40));
+      console.log("ADMIN INITIALIZED:", admin.apps.length);
 
       if (!idToken) {
         console.error('>>> [DEBUG] Failure: idToken is missing in req.body');
