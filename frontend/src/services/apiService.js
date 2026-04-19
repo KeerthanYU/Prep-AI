@@ -10,20 +10,17 @@ const apiService = axios.create({
   },
 });
 
-// Request interceptor to add session token or Firebase token
+// Request interceptor to add JWT token from localStorage
 apiService.interceptors.request.use(
-  async (config) => {
+  (config) => {
     try {
-      // First, try to use JWT session token from localStorage
-      const sessionToken = localStorage.getItem('sessionToken');
-      if (sessionToken) {
-        config.headers.Authorization = `Bearer ${sessionToken}`;
-        return config;
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('Error setting auth token:', error);
+      console.error('Error reading auth token:', error);
     }
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -32,18 +29,11 @@ apiService.interceptors.request.use(
 // Response interceptor for error handling
 apiService.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
+  (error) => {
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      // Clear stored tokens
-      localStorage.removeItem('sessionToken');
-
-      // Redirect to login
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 500);
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
     }
 
     // Handle 403 Forbidden
@@ -51,18 +41,14 @@ apiService.interceptors.response.use(
       console.error('Access forbidden:', error.response?.data?.message);
     }
 
-    // Handle 500 Server Error
+    // Handle 500+ Server Errors
     if (error.response?.status >= 500) {
       console.error('Server error:', error.response?.data?.message);
     }
 
-    return Promise.reject(
-      error.response?.data || {
-        error: 'Request failed',
-        message: error.message,
-      }
-    );
+    return Promise.reject(error);
   }
 );
 
 export default apiService;
+

@@ -1,103 +1,133 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import apiService from '../services/apiService';
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [sessionToken, setSessionToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  // On mount: hydrate session token if present
+  // Hydrate auth state from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem('sessionToken');
-    if (stored) {
-      setSessionToken(stored);
-      apiService.defaults.headers.common['Authorization'] = `Bearer ${stored}`;
-      // Try to fetch current user profile from backend
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      apiService.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Try to fetch current user
       apiService
         .get('/auth/me')
         .then((res) => {
-          if (res.data?.user) setUserProfile(res.data.user);
+          setUser(res.data?.user || null);
         })
-        .catch((err) => {
-          console.warn('Failed to hydrate session from token:', err?.message || err);
-          localStorage.removeItem('sessionToken');
+        .catch(() => {
+          // Token is invalid, clear it
+          localStorage.removeItem('authToken');
           delete apiService.defaults.headers.common['Authorization'];
-          setSessionToken(null);
+          setUser(null);
+        })
+        .finally(() => {
+          setLoading(false);
         });
+    } else {
+      setLoading(false);
     }
-
-    // no-op: social auth removed. hydration handled above via stored JWT.
   }, []);
 
-  const loginWithEmail = async (email, password) => {
-    setLoading(true);
+  const signup = async (email, password, name) => {
+    setError(null);
     try {
-      const res = await apiService.post('/auth/login', { email, password });
-      if (res.data?.sessionToken) {
-        setSessionToken(res.data.sessionToken);
-        localStorage.setItem('sessionToken', res.data.sessionToken);
-        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.sessionToken}`;
+      const res = await apiService.post('/auth/signup', {
+        email,
+        password,
+        name,
+      });
+
+      if (res.data?.token) {
+        localStorage.setItem('authToken', res.data.token);
+        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
       }
-      if (res.data?.user) setUserProfile(res.data.user);
+
+      if (res.data?.user) {
+        setUser(res.data.user);
+      }
+
       return res.data;
     } catch (err) {
+      const message = err.response?.data?.message || 'Signup failed. Please try again.';
+      setError(message);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
-  const signupWithEmail = async (email, password, displayName) => {
-    setLoading(true);
+  const login = async (email, password) => {
+    setError(null);
     try {
-      const res = await apiService.post('/auth/signup', { email, password, displayName });
-      if (res.data?.sessionToken) {
-        setSessionToken(res.data.sessionToken);
-        localStorage.setItem('sessionToken', res.data.sessionToken);
-        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.sessionToken}`;
+      const res = await apiService.post('/auth/login', {
+        email,
+        password,
+      });
+
+      if (res.data?.token) {
+        localStorage.setItem('authToken', res.data.token);
+        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
       }
-      if (res.data?.user) setUserProfile(res.data.user);
+
+      if (res.data?.user) {
+        setUser(res.data.user);
+      }
+
       return res.data;
     } catch (err) {
+      const message = err.response?.data?.message || 'Login failed. Please check your credentials.';
+      setError(message);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
-  const logout = async () => {
+  const googleLogin = async (email, name, photoURL) => {
+    setError(null);
     try {
-      // Stateless JWT: simply clear client session
-      setUser(null);
-      setUserProfile(null);
-      setSessionToken(null);
-      localStorage.removeItem('sessionToken');
-      delete apiService.defaults.headers.common['Authorization'];
+      const res = await apiService.post('/auth/google-login', {
+        email,
+        name,
+        photoURL,
+      });
+
+      if (res.data?.token) {
+        localStorage.setItem('authToken', res.data.token);
+        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      }
+
+      if (res.data?.user) {
+        setUser(res.data.user);
+      }
+
+      return res.data;
     } catch (err) {
-      console.error('Logout error:', err);
-      setError(err.message);
+      const message = err.response?.data?.message || 'Google login failed. Please try again.';
+      setError(message);
+      throw err;
     }
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('authToken');
+    delete apiService.defaults.headers.common['Authorization'];
   };
 
   const value = {
     user,
-    userProfile,
-    setUserProfile,
-    sessionToken,
     loading,
     error,
+    setError,
+    signup,
+    login,
+    googleLogin,
     logout,
-    loginWithEmail,
-    signupWithEmail,
-    isAuthenticated: !!sessionToken,
+    isAuthenticated: !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
