@@ -10,7 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import apiService from '../services/apiService';
 
 const Dashboard = () => {
-  const { userProfile, setUserProfile } = useAuth();
+  const { user, setUser } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -34,14 +34,14 @@ const Dashboard = () => {
   };
 
   const handleResumeUploadSuccess = (resume) => {
-    setUserProfile((prev) => ({
+    setUser((prev) => ({
       ...prev,
       resume,
     }));
   };
 
   const handleResumeDelete = () => {
-    setUserProfile((prev) => ({
+    setUser((prev) => ({
       ...prev,
       resume: null,
     }));
@@ -70,7 +70,7 @@ const Dashboard = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
           <p className="text-gray-600">
-            Welcome back, {userProfile?.displayName}! Track your interview readiness progress.
+            Welcome back, {user?.name}! Track your interview readiness progress.
           </p>
         </div>
 
@@ -101,7 +101,7 @@ const Dashboard = () => {
           <div className="card">
             <p className="text-sm text-gray-600 mb-1">Domain</p>
             <p className="text-lg font-semibold text-gray-900">
-              {userProfile?.domain || 'Not selected'}
+              {user?.domain || 'Not selected'}
             </p>
           </div>
         </div>
@@ -211,16 +211,16 @@ const Dashboard = () => {
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="label">Display Name</label>
-                  <p className="text-gray-900">{userProfile?.displayName}</p>
+                  <label htmlFor="display-name" className="label">Name</label>
+                  <p id="display-name" className="text-gray-900">{user?.name}</p>
                 </div>
                 <div>
-                  <label className="label">Email</label>
-                  <p className="text-gray-900">{userProfile?.email}</p>
+                  <label htmlFor="display-email" className="label">Email</label>
+                  <p id="display-email" className="text-gray-900">{user?.email}</p>
                 </div>
                 <div>
-                  <label className="label">Interview Domain</label>
-                  <p className="text-gray-900">{userProfile?.domain || 'Not selected'}</p>
+                  <label htmlFor="display-domain" className="label">Interview Domain</label>
+                  <p id="display-domain" className="text-gray-900">{user?.domain || 'Not selected'}</p>
                 </div>
               </div>
             </div>
@@ -232,7 +232,7 @@ const Dashboard = () => {
               </h2>
               <ResumeUpload
                 onUploadSuccess={handleResumeUploadSuccess}
-                existingResume={userProfile?.resume}
+                existingResume={user?.resume}
                 onDelete={handleResumeDelete}
               />
             </div>

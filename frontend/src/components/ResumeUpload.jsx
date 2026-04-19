@@ -45,7 +45,9 @@ const ResumeUpload = ({ onUploadSuccess, existingResume, onDelete }) => {
 
   return (
     <div className="space-y-4">
-      <label className="label">Upload Resume (PDF / DOC / DOCX)</label>
+      <label htmlFor="resume-upload" className="block text-sm font-medium text-gray-700 mb-2">
+        Upload Resume (PDF / DOC / DOCX)
+      </label>
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -64,6 +66,7 @@ const ResumeUpload = ({ onUploadSuccess, existingResume, onDelete }) => {
             </p>
           </div>
           <button
+            type="button"
             onClick={handleDelete}
             className="p-2 text-red-600 hover:bg-red-100 rounded"
             title="Delete resume"
@@ -76,8 +79,16 @@ const ResumeUpload = ({ onUploadSuccess, existingResume, onDelete }) => {
       <div
         className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition"
         onClick={() => fileInputRef.current?.click()}
+        role="button"
+        tabIndex="0"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            fileInputRef.current?.click();
+          }
+        }}
+        aria-label="Upload Resume"
       >
-        <FiUpload className="mx-auto mb-2 text-gray-400" size={32} />
+        <FiUpload className="mx-auto mb-2 text-gray-400" size={32} aria-hidden="true" />
         <p className="text-sm font-medium text-gray-700">
           Click to upload or drag and drop
         </p>
@@ -85,6 +96,8 @@ const ResumeUpload = ({ onUploadSuccess, existingResume, onDelete }) => {
       </div>
 
       <input
+        id="resume-upload"
+        name="resume"
         ref={fileInputRef}
         type="file"
         accept=".pdf,.doc,.docx"

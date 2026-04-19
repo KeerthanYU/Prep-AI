@@ -124,20 +124,25 @@ const Interview = () => {
               )}
 
               <div className="mb-6">
-                <label className="label">Select Interview Domain</label>
+                <p className="block text-sm font-medium text-gray-700 mb-2">Select Interview Domain</p>
                 <div className="space-y-2">
-                  {domains.map((d) => (
-                    <label key={d} className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        value={d}
-                        checked={domain === d}
-                        onChange={(e) => setDomain(e.target.value)}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-gray-900">{d}</span>
-                    </label>
-                  ))}
+                  {domains.map((d) => {
+                    const domainId = `domain-${d.toLowerCase().replace(/\s+/g, '-')}`;
+                    return (
+                      <label key={d} htmlFor={domainId} className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          id={domainId}
+                          name="interview-domain"
+                          type="radio"
+                          value={d}
+                          checked={domain === d}
+                          onChange={(e) => setDomain(e.target.value)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                        <span className="text-gray-900">{d}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -223,21 +228,28 @@ const Interview = () => {
 
           {/* Answer Type Selection */}
           <div className="mb-6 flex gap-4">
-            <label className="flex items-center gap-2">
+            <p className="sr-only">Choose answer method:</p>
+            <label htmlFor="answer-type-text" className="flex items-center gap-2 cursor-pointer">
               <input
+                id="answer-type-text"
+                name="answer-type"
                 type="radio"
                 value="text"
                 checked={answerType === 'text'}
                 onChange={(e) => setAnswerType(e.target.value)}
+                className="cursor-pointer"
               />
               <span className="text-gray-700">Type Answer</span>
             </label>
-            <label className="flex items-center gap-2">
+            <label htmlFor="answer-type-voice" className="flex items-center gap-2 cursor-pointer">
               <input
+                id="answer-type-voice"
+                name="answer-type"
                 type="radio"
                 value="voice"
                 checked={answerType === 'voice'}
                 onChange={(e) => setAnswerType(e.target.value)}
+                className="cursor-pointer"
               />
               <span className="text-gray-700">Voice Answer</span>
             </label>
@@ -246,8 +258,12 @@ const Interview = () => {
           {/* Answer Input */}
           {answerType === 'text' ? (
             <div className="mb-6">
-              <label className="label">Your Answer</label>
+              <label htmlFor="text-answer" className="block text-sm font-medium text-gray-700 mb-2">
+                Your Answer
+              </label>
               <textarea
+                id="text-answer"
+                name="textAnswer"
                 value={textAnswer}
                 onChange={(e) => setTextAnswer(e.target.value)}
                 placeholder="Type your answer here..."

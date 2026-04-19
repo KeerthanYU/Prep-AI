@@ -12,14 +12,7 @@ const Signup = () => {
   const [localError, setLocalError] = useState('');
 
   const navigate = useNavigate();
-  const { signup, error: authError, isAuthenticated } = useAuth();
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+  const { signup, error: authError } = useAuth();
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -85,6 +78,7 @@ const Signup = () => {
                 </label>
                 <input
                   id="name"
+                  name="name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -100,6 +94,7 @@ const Signup = () => {
                 </label>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -116,6 +111,7 @@ const Signup = () => {
                 </label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -132,6 +128,7 @@ const Signup = () => {
                 </label>
                 <input
                   id="confirmPassword"
+                  name="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

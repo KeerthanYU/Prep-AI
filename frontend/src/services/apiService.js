@@ -33,7 +33,11 @@ apiService.interceptors.response.use(
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken');
-      window.location.href = '/login';
+      // Only redirect if NOT on login or signup pages to avoid clearing error messages
+      const isAuthPage = window.location.pathname === '/login' || window.location.pathname === '/signup';
+      if (!isAuthPage) {
+        window.location.href = '/login';
+      }
     }
 
     // Handle 403 Forbidden

@@ -1,11 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import {
-  getAuth,
-  connectAuthEmulator,
-  setPersistence,
-  browserLocalPersistence,
-  GoogleAuthProvider,
-} from 'firebase/auth';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,33 +10,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase
+export const app = initializeApp(firebaseConfig);
+
+// Initialize Firebase Auth
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 
-// Enable persistent login
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.warn('Persistence setup failed:', error.message);
+// Optional: Configure Google Provider
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
 });
-
-// Connect to emulator in development
-if (import.meta.env.DEV) {
-  try {
-    connectAuthEmulator(auth, 'http://localhost:9099', {
-      disableWarnings: true,
-    });
-  } catch (error) {
-    // Emulator already connected or other error
-  }
-}
-
-/**
- * Return a configured Google provider for sign-in flows.
- * Using `prompt: 'select_account'` avoids ambiguous account selection.
- */
-export function createGoogleProvider() {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  return provider;
-}
 
 export default app;

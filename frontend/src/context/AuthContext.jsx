@@ -8,105 +8,126 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Hydrate auth state from localStorage on mount
+  // ===============================
+  // 🔐 HYDRATE USER ON APP LOAD
+  // ===============================
   useEffect(() => {
     const token = localStorage.getItem('authToken');
-    if (token) {
-      apiService.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // Try to fetch current user
-      apiService
-        .get('/auth/me')
-        .then((res) => {
-          setUser(res.data?.user || null);
-        })
-        .catch(() => {
-          // Token is invalid, clear it
-          localStorage.removeItem('authToken');
-          delete apiService.defaults.headers.common['Authorization'];
-          setUser(null);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
+
+    if (!token) {
       setLoading(false);
+      return;
     }
+
+    // Prepare API service with existing token
+    apiService.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+    apiService
+      .get('/auth/me')
+      .then((res) => {
+        // Backend should return { user: { ... } } or { data: { user: { ... } } }
+        const userData = res.data?.user || res.data?.data?.user || res.data?.data;
+        setUser(userData || null);
+      })
+      .catch((err) => {
+        console.error('>>> [AUTH DEBUG] Rehydration failed:', err);
+        localStorage.removeItem('authToken');
+        delete apiService.defaults.headers.common['Authorization'];
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const signup = async (email, password, name) => {
-    setError(null);
-    try {
-      const res = await apiService.post('/auth/signup', {
-        email,
-        password,
-        name,
-      });
+  // ===============================
+  // 🔑 CENTRAL AUTH SETTER (Atomic)
+  // ===============================
+  const saveAuthData = (token, userData) => {
+    console.log('>>> [AUTH DEBUG] Atomic Save:', { hasToken: !!token, hasUser: !!userData });
+    
+    if (token) {
+      localStorage.setItem('authToken', token);
+      apiService.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
 
-      if (res.data?.token) {
-        localStorage.setItem('authToken', res.data.token);
-        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-      }
-
-      if (res.data?.user) {
-        setUser(res.data.user);
-      }
-
-      return res.data;
-    } catch (err) {
-      const message = err.response?.data?.message || 'Signup failed. Please try again.';
-      setError(message);
-      throw err;
+    if (userData) {
+      setUser(userData);
     }
   };
 
+  // ===============================
+  // 🧾 EMAIL LOGIN
+  // ===============================
   const login = async (email, password) => {
     setError(null);
+    setLoading(true);
+
     try {
-      const res = await apiService.post('/auth/login', {
-        email,
-        password,
-      });
+      const res = await apiService.post('/auth/login', { email, password });
+      
+      // Normalize different backend response shapes
+      const token = res.data.token || res.data.accessToken || res.data.data?.token;
+      const userData = res.data.user || res.data.data?.user || res.data.data;
 
-      if (res.data?.token) {
-        localStorage.setItem('authToken', res.data.token);
-        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-      }
+      if (!token) throw new Error('Token missing from server response');
 
-      if (res.data?.user) {
-        setUser(res.data.user);
-      }
-
+      saveAuthData(token, userData);
       return res.data;
     } catch (err) {
-      const message = err.response?.data?.message || 'Login failed. Please check your credentials.';
+      const message = err.response?.data?.message || 'Login failed';
       setError(message);
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const googleLogin = async (email, name, photoURL) => {
+  // ===============================
+  // 🌐 GOOGLE LOGIN
+  // ===============================
+  const googleLogin = async (idToken) => {
     setError(null);
+    setLoading(true);
+
     try {
-      const res = await apiService.post('/auth/google-login', {
-        email,
-        name,
-        photoURL,
-      });
+      const res = await apiService.post('/auth/google-login', { idToken });
+      
+      const token = res.data.token || res.data.accessToken || res.data.data?.token;
+      const userData = res.data.user || res.data.data?.user || res.data.data;
 
-      if (res.data?.token) {
-        localStorage.setItem('authToken', res.data.token);
-        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
-      }
+      if (!token) throw new Error('Token missing from server response');
 
-      if (res.data?.user) {
-        setUser(res.data.user);
-      }
-
+      saveAuthData(token, userData);
       return res.data;
     } catch (err) {
-      const message = err.response?.data?.message || 'Google login failed. Please try again.';
-      setError(message);
+      setError(err.response?.data?.message || 'Google login failed');
       throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ===============================
+  // 🧾 SIGNUP
+  // ===============================
+  const signup = async (email, password, name) => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await apiService.post('/auth/signup', { email, password, name });
+      
+      const token = res.data.token || res.data.accessToken || res.data.data?.token;
+      const userData = res.data.user || res.data.data?.user || res.data.data;
+
+      saveAuthData(token, userData);
+      return res.data;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Signup failed');
+      throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,18 +137,20 @@ export const AuthProvider = ({ children }) => {
     delete apiService.defaults.headers.common['Authorization'];
   };
 
-  const value = {
-    user,
-    loading,
-    error,
-    setError,
-    signup,
-    login,
-    googleLogin,
-    logout,
-    isAuthenticated: !!user,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user,
+      setUser,
+      loading,
+      error,
+      setError,
+      login,
+      signup,
+      googleLogin,
+      logout,
+      isAuthenticated: !!localStorage.getItem('authToken'), // Derived purely from token existence
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
-
