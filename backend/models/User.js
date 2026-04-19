@@ -14,6 +14,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false, // Don't include by default in queries
     },
+    firebaseId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
 
     // Profile
     name: {

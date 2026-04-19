@@ -32,6 +32,8 @@ async function verifyToken(token) {
   return admin.auth().verifyIdToken(token);
 }
 
+initializeFirebase();
+
 async function getFirebaseUser(uid) {
   if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized');
   return admin.auth().getUser(uid);
