@@ -1,80 +1,46 @@
 const mongoose = require('mongoose');
-const { getPermissionsForRole } = require('../config/roles');
 
 const userSchema = new mongoose.Schema(
   {
-    firebaseId: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
-
+    // Core authentication
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
     },
-
     password: {
       type: String,
-      select: false,
+      select: false, // Don't include by default in queries
     },
 
-    displayName: {
+    // Profile
+    name: {
       type: String,
-      default: "",
+      default: '',
     },
-
-    // 🔥 FIXED: align with Firebase
     photoURL: {
       type: String,
-      default: "",
+      default: null,
     },
 
+    // Authorization
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user",
+      enum: ['user', 'admin'],
+      default: 'user',
     },
-
     permissions: {
       type: [String],
       default: [],
     },
 
-    domain: {
-      type: String,
-      enum: ["Software Engineering", "Marketing", "Finance", "HR", null],
-      default: undefined,
-    },
-
-    resume: {
-      fileName: String,
-      fileUrl: String,
-      uploadedAt: Date,
-    },
-
-    resumeAnalysis: {
-      extractedSkills: [String],
-      relevantSkills: [String],
-      missingSkills: [String],
-      overallScore: { type: Number, min: 0, max: 100 },
-      updatedAt: Date,
-    },
-
-    interviewReadinessScore: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
-
-    totalSessions: {
+    // Interview tracking (simple)
+    totalInterviews: {
       type: Number,
       default: 0,
     },
-
     averageScore: {
       type: Number,
       default: 0,
@@ -82,71 +48,36 @@ const userSchema = new mongoose.Schema(
       max: 100,
     },
 
-    domainStrengths: {
-      contentScore: { type: Number, default: 0 },
-      communicationScore: { type: Number, default: 0 },
-      confidenceScore: { type: Number, default: 0 },
-    },
-
-    skillsGap: [
-      {
-        skill: String,
-        proficiency: {
-          type: String,
-          enum: ["basic", "intermediate", "advanced"],
-        },
-        priority: {
-          type: String,
-          enum: ["low", "medium", "high"],
-        },
-      },
-    ],
-
-    lastInterviewDate: Date,
-
-    loginHistory: [
-      {
-        timestamp: { type: Date, default: Date.now },
-        ipAddress: String,
-        userAgent: String,
-      },
-    ],
+    // Metadata
+    lastLoginAt: Date,
   },
   { timestamps: true }
 );
 
-// Ensure permissions are set from role on save if not provided
+// Auto-populate permissions based on role before saving
 userSchema.pre('save', function (next) {
-  if (!this.permissions || this.permissions.length === 0) {
-    this.permissions = getPermissionsForRole(this.role || 'user');
-  }
+  const rolePermissions = {
+    user: ['view_dashboard', 'take_interview', 'view_profile'],
+    admin: ['view_dashboard', 'take_interview', 'view_profile', 'manage_users', 'view_analytics'],
+  };
+  this.permissions = rolePermissions[this.role] || [];
   next();
 });
 
-// Normalize domain: if explicitly null, unset so enum validation won't fail
-userSchema.pre('validate', function (next) {
-  if (this.domain === null) {
-    this.domain = undefined;
-  }
-  next();
-});
+// Index for fast email lookups
+userSchema.index({ email: 1 });
 
-// Indexes
-userSchema.index({ email: 1, createdAt: -1 });
-userSchema.index({ role: 1 });
-
-// Instance helper to return a safe public profile object
+// Public profile helper
 userSchema.methods.toPublic = function () {
   return {
     id: this._id,
     email: this.email,
-    displayName: this.displayName,
-    profilePicture: this.photoURL || this.profilePicture || null,
+    name: this.name,
+    photoURL: this.photoURL,
     role: this.role,
-    permissions: this.permissions || [],
-    domain: this.domain,
-    interviewReadinessScore: this.interviewReadinessScore,
-    totalSessions: this.totalSessions,
+    permissions: this.permissions,
+    totalInterviews: this.totalInterviews,
+    averageScore: this.averageScore,
   };
 };
 
