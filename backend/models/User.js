@@ -1,55 +1,60 @@
 const mongoose = require('mongoose');
+const { getPermissionsForRole } = require('../config/roles');
 
 const userSchema = new mongoose.Schema(
   {
-    // If user signed up via Firebase Google, firebaseId will be set.
-    // For local email/password users, firebaseId is optional.
     firebaseId: {
       type: String,
-      required: false,
       unique: true,
       sparse: true,
-      index: true,
     },
+
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
     },
-    // Hashed password for local auth (optional for social logins)
+
     password: {
       type: String,
       select: false,
     },
+
     displayName: {
       type: String,
-      default: '',
+      default: "",
     },
-    profilePicture: {
+
+    // 🔥 FIXED: align with Firebase
+    photoURL: {
       type: String,
-      default: null,
+      default: "",
     },
+
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: ["user", "admin"],
+      default: "user",
     },
-    // Fine-grained permissions for the user. Populated from role by default.
+
     permissions: {
       type: [String],
       default: [],
     },
+
     domain: {
       type: String,
-      enum: ['Software Engineering', 'Marketing', 'Finance', 'HR'],
-      default: null,
+      enum: ["Software Engineering", "Marketing", "Finance", "HR", null],
+      default: undefined,
     },
+
     resume: {
       fileName: String,
       fileUrl: String,
       uploadedAt: Date,
     },
+
     resumeAnalysis: {
       extractedSkills: [String],
       relevantSkills: [String],
@@ -57,35 +62,48 @@ const userSchema = new mongoose.Schema(
       overallScore: { type: Number, min: 0, max: 100 },
       updatedAt: Date,
     },
+
     interviewReadinessScore: {
       type: Number,
       default: 0,
       min: 0,
       max: 100,
     },
+
     totalSessions: {
       type: Number,
       default: 0,
     },
+
     averageScore: {
       type: Number,
       default: 0,
       min: 0,
       max: 100,
     },
+
     domainStrengths: {
       contentScore: { type: Number, default: 0 },
       communicationScore: { type: Number, default: 0 },
       confidenceScore: { type: Number, default: 0 },
     },
+
     skillsGap: [
       {
         skill: String,
-        proficiency: { type: String, enum: ['basic', 'intermediate', 'advanced'] },
-        priority: { type: String, enum: ['low', 'medium', 'high'] },
+        proficiency: {
+          type: String,
+          enum: ["basic", "intermediate", "advanced"],
+        },
+        priority: {
+          type: String,
+          enum: ["low", "medium", "high"],
+        },
       },
     ],
+
     lastInterviewDate: Date,
+
     loginHistory: [
       {
         timestamp: { type: Date, default: Date.now },
@@ -93,19 +111,27 @@ const userSchema = new mongoose.Schema(
         userAgent: String,
       },
     ],
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
   { timestamps: true }
 );
 
-// Index for efficient queries
+// Ensure permissions are set from role on save if not provided
+userSchema.pre('save', function (next) {
+  if (!this.permissions || this.permissions.length === 0) {
+    this.permissions = getPermissionsForRole(this.role || 'user');
+  }
+  next();
+});
+
+// Normalize domain: if explicitly null, unset so enum validation won't fail
+userSchema.pre('validate', function (next) {
+  if (this.domain === null) {
+    this.domain = undefined;
+  }
+  next();
+});
+
+// Indexes
 userSchema.index({ email: 1, createdAt: -1 });
 userSchema.index({ role: 1 });
 
@@ -115,7 +141,7 @@ userSchema.methods.toPublic = function () {
     id: this._id,
     email: this.email,
     displayName: this.displayName,
-    profilePicture: this.profilePicture,
+    profilePicture: this.photoURL || this.profilePicture || null,
     role: this.role,
     permissions: this.permissions || [],
     domain: this.domain,
@@ -125,4 +151,3 @@ userSchema.methods.toPublic = function () {
 };
 
 module.exports = mongoose.model('User', userSchema);
-

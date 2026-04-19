@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const admin = require('firebase-admin');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { getPermissionsForRole } = require('../config/roles');
@@ -20,6 +19,7 @@ class AuthController {
   // Email/password signup
   async signup(req, res, next) {
     try {
+      console.log('signup request body:', JSON.stringify(req.body || {}));
       const { email, password, displayName } = req.body;
 
       if (!email || !password) {
@@ -89,63 +89,7 @@ class AuthController {
   }
 
   // Firebase social login (Google)
-  async firebaseAuth(req, res, next) {
-    try {
-      const { firebaseToken, displayName, photoURL } = req.body;
-
-      if (!firebaseToken) {
-        return res.status(400).json({ error: 'Bad Request', message: 'Firebase token is required' });
-      }
-
-      let decoded;
-      try {
-        decoded = await admin.auth().verifyIdToken(firebaseToken);
-      } catch (err) {
-        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid Firebase token' });
-      }
-
-      const { uid, email } = decoded;
-      if (!email) return res.status(400).json({ error: 'Bad Request', message: 'No email in Firebase token' });
-
-      let user = await User.findOne({ $or: [{ firebaseId: uid }, { email }] });
-
-      if (user) {
-        // Link firebaseId if missing
-        if (!user.firebaseId) {
-          user.firebaseId = uid;
-        }
-
-        // Ensure permissions
-        if (!user.permissions || user.permissions.length === 0) {
-          user.permissions = getPermissionsForRole(user.role);
-        }
-
-        user.loginHistory = (user.loginHistory || []).slice(-9);
-        user.loginHistory.push({ timestamp: new Date(), ipAddress: req.ip, userAgent: req.get('user-agent') });
-        user.updatedAt = new Date();
-        await user.save();
-      } else {
-        // Create new user
-        const role = 'user';
-        const permissions = getPermissionsForRole(role);
-        user = new User({
-          firebaseId: uid,
-          email,
-          displayName: displayName || email.split('@')[0],
-          profilePicture: photoURL || null,
-          role,
-          permissions,
-        });
-        await user.save();
-      }
-
-      const token = signJwt(user);
-
-      res.status(200).json({ message: 'Authenticated', sessionToken: token, user: user.toPublic() });
-    } catch (err) {
-      next(err);
-    }
-  }
+  // Firebase social auth removed to simplify flow: use email/password (signup/login)
 
   // Get current user
   async getCurrentUser(req, res, next) {

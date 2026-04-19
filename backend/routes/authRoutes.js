@@ -9,7 +9,7 @@ const { validateRequest, sanitizeBody, schemas } = require('../middleware/valida
 router.post('/signup', authLimiter, sanitizeBody, validateRequest(schemas.register), authController.signup);
 router.post('/login', authLimiter, sanitizeBody, validateRequest(schemas.login), authController.login);
 // Firebase social login (Google)
-router.post('/firebase', authLimiter, sanitizeBody, validateRequest(schemas.firebaseLogin), authController.firebaseAuth);
+// Removed Firebase social login to simplify auth flow (email/password JWT only)
 
 // Protected routes
 router.get('/me', verifyToken, authController.getCurrentUser);

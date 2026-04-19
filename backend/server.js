@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const path = require('path');
 
 const connectDatabase = require('./config/database');
-const { initializeFirebase } = require('./config/firebaseConfig');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
@@ -40,7 +39,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Initialize Firebase and connect to MongoDB
 let dbConnected = false;
-let firebaseInitialized = false;
 
 async function startServer() {
   try {
@@ -48,13 +46,6 @@ async function startServer() {
     dbConnected = true;
   } catch (error) {
     console.error('✗ Database connection failed:', error.message);
-  }
-
-  try {
-    await initializeFirebase();
-    firebaseInitialized = true;
-  } catch (error) {
-    console.error('✗ Firebase initialization failed:', error.message);
   }
 
   const server = app.listen(PORT, () => {
@@ -96,7 +87,6 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
     database: dbConnected ? 'Connected' : 'Disconnected',
-    firebase: firebaseInitialized ? 'Initialized' : 'Not initialized',
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
   });

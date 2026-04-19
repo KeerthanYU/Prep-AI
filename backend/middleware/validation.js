@@ -19,8 +19,8 @@ const schemas = {
   // Firebase token-based login/register
   firebaseLogin: Joi.object({
     firebaseToken: Joi.string().required(),
-    displayName: Joi.string().min(2).max(50).optional(),
-    photoURL: Joi.string().uri().optional(),
+    displayName: Joi.string().min(2).max(50).optional().allow('', null),
+    photoURL: Joi.string().uri().allow('', null).optional(),
   }),
 
   profileUpdate: Joi.object({
@@ -89,7 +89,13 @@ const sanitizeBody = (req, res, next) => {
 
   Object.keys(req.body).forEach((key) => {
     if (typeof req.body[key] === 'string') {
-      req.body[key] = sanitizeInput(req.body[key]);
+      const raw = req.body[key].trim();
+      // Preserve URLs (do not escape) so Joi .uri() validation can pass
+      if (validator.isURL(raw, { require_protocol: true })) {
+        req.body[key] = raw;
+      } else {
+        req.body[key] = sanitizeInput(raw);
+      }
     }
   });
 
