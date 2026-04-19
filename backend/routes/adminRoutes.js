@@ -125,9 +125,10 @@ router.put('/users/:userId/role', verifyJWTToken, requireAdmin, async (req, res,
       });
     }
 
+    const permissions = require('../config/roles').getPermissionsForRole(role);
     const user = await User.findByIdAndUpdate(
       req.params.userId,
-      { role, updatedAt: new Date() },
+      { role, permissions, updatedAt: new Date() },
       { new: true }
     );
 

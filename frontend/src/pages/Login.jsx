@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { useLocation } from 'react-router-dom';
 import { auth, createGoogleProvider } from '../config/firebase';
 import { FiLoader } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
@@ -10,6 +11,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   /**
    * Handle Google Sign-In
@@ -23,7 +25,7 @@ const Login = () => {
 
       try {
         await signInWithPopup(auth, provider);
-        navigate('/dashboard');
+        // onAuthStateChanged will handle backend exchange and navigation
       } catch (popupError) {
         // If popup is blocked or not supported, fallback to redirect flow
         if (
@@ -32,6 +34,9 @@ const Login = () => {
           popupError.code === 'auth/failed-precondition'
         ) {
           try {
+            // Persist intended redirect so it survives full-page redirect flows
+            const fromPath = location.state?.from?.pathname || '/dashboard';
+            localStorage.setItem('postLoginRedirect', fromPath);
             await signInWithRedirect(auth, provider);
             // Redirect will navigate away; handle post-redirect in auth context
             return;

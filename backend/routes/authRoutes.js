@@ -1,21 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { verifyJWTToken, verifyFirebaseToken } = require('../middleware/authMiddleware');
+const verifyToken = require('../middleware/authJwt');
 const { authLimiter } = require('../middleware/rateLimiter');
 const { validateRequest, sanitizeBody, schemas } = require('../middleware/validation');
 
 // Public routes
-// Both register and login endpoints accept a Firebase ID token when using Firebase auth flows
-router.post('/register', authLimiter, sanitizeBody, validateRequest(schemas.firebaseLogin), authController.registerOrLoginUser);
-router.post('/login', authLimiter, sanitizeBody, validateRequest(schemas.firebaseLogin), authController.registerOrLoginUser);
+router.post('/signup', authLimiter, sanitizeBody, validateRequest(schemas.register), authController.signup);
+router.post('/login', authLimiter, sanitizeBody, validateRequest(schemas.login), authController.login);
+// Firebase social login (Google)
+router.post('/firebase', authLimiter, sanitizeBody, validateRequest(schemas.firebaseLogin), authController.firebaseAuth);
 
 // Protected routes
-router.get('/me', verifyJWTToken, authController.getCurrentUser);
-router.put('/profile', verifyJWTToken, sanitizeBody, validateRequest(schemas.profileUpdate), authController.updateProfile);
-router.post('/logout', verifyJWTToken, authController.logout);
-router.post('/refresh-token', verifyJWTToken, authController.refreshToken);
-router.delete('/account', verifyJWTToken, authController.deleteAccount);
+router.get('/me', verifyToken, authController.getCurrentUser);
+router.put('/profile', verifyToken, sanitizeBody, validateRequest(schemas.profileUpdate), authController.updateProfile);
+router.post('/logout', verifyToken, authController.logout);
+router.post('/refresh-token', verifyToken, authController.refreshToken);
+router.delete('/account', verifyToken, authController.deleteAccount);
 
 module.exports = router;
 

@@ -8,7 +8,7 @@ exports.startInterview = async (req, res, next) => {
     const { domain } = req.body;
     const userId = req.userId;
 
-    const user = await User.findOne({ firebaseId: userId });
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -87,7 +87,7 @@ exports.getInterviewHistory = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
     const skip = parseInt(req.query.skip) || 0;
 
-    const user = await User.findOne({ firebaseId: userId });
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -114,7 +114,7 @@ exports.getInterviewDetails = async (req, res, next) => {
     const { interviewId } = req.params;
     const userId = req.userId;
 
-    const user = await User.findOne({ firebaseId: userId });
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

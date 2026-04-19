@@ -1,257 +1,214 @@
 const User = require('../models/User');
 const admin = require('firebase-admin');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { getPermissionsForRole } = require('../config/roles');
+
+const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
+
+function signJwt(user) {
+  const payload = {
+    userId: user._id.toString(),
+    role: user.role,
+    permissions: user.permissions || [],
+  };
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRY });
+}
 
 class AuthController {
-  /**
-   * Register or login user with Firebase ID token
-   */
-  async registerOrLoginUser(req, res, next) {
+  // Email/password signup
+  async signup(req, res, next) {
+    try {
+      const { email, password, displayName } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Bad Request', message: 'Email and password are required' });
+      }
+
+      const existing = await User.findOne({ email });
+      if (existing) {
+        return res.status(409).json({ error: 'Conflict', message: 'Email already registered' });
+      }
+
+      const hashed = await bcrypt.hash(password, SALT_ROUNDS);
+
+      const role = 'user';
+      const permissions = getPermissionsForRole(role);
+
+      const user = new User({
+        email,
+        password: hashed,
+        displayName: displayName || email.split('@')[0],
+        role,
+        permissions,
+      });
+
+      await user.save();
+
+      const token = signJwt(user);
+
+      res.status(201).json({
+        message: 'User registered',
+        sessionToken: token,
+        user: user.toPublic(),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Email/password login
+  async login(req, res, next) {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Bad Request', message: 'Email and password are required' });
+      }
+
+      const user = await User.findOne({ email }).select('+password');
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
+      }
+
+      const ok = await bcrypt.compare(password, user.password);
+      if (!ok) return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
+
+      // Ensure permissions exist
+      if (!user.permissions || user.permissions.length === 0) {
+        user.permissions = getPermissionsForRole(user.role);
+        await user.save();
+      }
+
+      const token = signJwt(user);
+
+      res.status(200).json({ message: 'Logged in', sessionToken: token, user: user.toPublic() });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Firebase social login (Google)
+  async firebaseAuth(req, res, next) {
     try {
       const { firebaseToken, displayName, photoURL } = req.body;
 
       if (!firebaseToken) {
-        return res.status(400).json({
-          error: 'Bad Request',
-          message: 'Firebase token is required',
-        });
+        return res.status(400).json({ error: 'Bad Request', message: 'Firebase token is required' });
       }
 
-      // Verify Firebase ID token
-      let decodedToken;
+      let decoded;
       try {
-        decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-      } catch (error) {
-        return res.status(401).json({
-          error: 'Unauthorized',
-          message: 'Invalid Firebase token',
-        });
+        decoded = await admin.auth().verifyIdToken(firebaseToken);
+      } catch (err) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid Firebase token' });
       }
 
-      const { uid, email } = decodedToken;
+      const { uid, email } = decoded;
+      if (!email) return res.status(400).json({ error: 'Bad Request', message: 'No email in Firebase token' });
 
-      // Check if user exists
-      let user = await User.findOne({ firebaseId: uid });
+      let user = await User.findOne({ $or: [{ firebaseId: uid }, { email }] });
 
       if (user) {
-        // Update login history
-        user.loginHistory = (user.loginHistory || []).slice(-9); // Keep last 10
-        user.loginHistory.push({
-          timestamp: new Date(),
-          ipAddress: req.ip,
-          userAgent: req.get('user-agent'),
-        });
+        // Link firebaseId if missing
+        if (!user.firebaseId) {
+          user.firebaseId = uid;
+        }
+
+        // Ensure permissions
+        if (!user.permissions || user.permissions.length === 0) {
+          user.permissions = getPermissionsForRole(user.role);
+        }
+
+        user.loginHistory = (user.loginHistory || []).slice(-9);
+        user.loginHistory.push({ timestamp: new Date(), ipAddress: req.ip, userAgent: req.get('user-agent') });
         user.updatedAt = new Date();
         await user.save();
-
-        // Generate JWT session token
-        const sessionToken = jwt.sign(
-          { userId: user._id.toString(), email: user.email },
-          process.env.JWT_SECRET,
-          { expiresIn: process.env.JWT_EXPIRY || '7d' }
-        );
-
-        return res.status(200).json({
-          message: 'User logged in successfully',
-          sessionToken,
-          user: {
-            id: user._id,
-            email: user.email,
-            displayName: user.displayName,
-            profilePicture: user.profilePicture,
-            domain: user.domain,
-            role: user.role,
-            interviewReadinessScore: user.interviewReadinessScore,
-            totalSessions: user.totalSessions,
-          },
+      } else {
+        // Create new user
+        const role = 'user';
+        const permissions = getPermissionsForRole(role);
+        user = new User({
+          firebaseId: uid,
+          email,
+          displayName: displayName || email.split('@')[0],
+          profilePicture: photoURL || null,
+          role,
+          permissions,
         });
+        await user.save();
       }
 
-      // Create new user
-      user = new User({
-        firebaseId: uid,
-        email,
-        displayName: displayName || email.split('@')[0],
-        profilePicture: photoURL || null,
-      });
+      const token = signJwt(user);
 
-      await user.save();
-
-      // Generate JWT session token
-      const sessionToken = jwt.sign(
-        { userId: user._id.toString(), email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRY || '7d' }
-      );
-
-      res.status(201).json({
-        message: 'User registered successfully',
-        sessionToken,
-        user: {
-          id: user._id,
-          email: user.email,
-          displayName: user.displayName,
-          profilePicture: user.profilePicture,
-          domain: user.domain,
-          role: user.role,
-          interviewReadinessScore: user.interviewReadinessScore,
-          totalSessions: user.totalSessions,
-        },
-      });
-    } catch (error) {
-      next(error);
+      res.status(200).json({ message: 'Authenticated', sessionToken: token, user: user.toPublic() });
+    } catch (err) {
+      next(err);
     }
   }
 
-  /**
-   * Get current user profile
-   */
+  // Get current user
   async getCurrentUser(req, res, next) {
     try {
-      const user = await User.findById(req.userId).select('-loginHistory');
-
-      if (!user) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'User not found',
-        });
-      }
-
-      res.status(200).json({
-        user: {
-          id: user._id,
-          email: user.email,
-          displayName: user.displayName,
-          profilePicture: user.profilePicture,
-          domain: user.domain,
-          role: user.role,
-          resume: user.resume,
-          resumeAnalysis: user.resumeAnalysis,
-          interviewReadinessScore: user.interviewReadinessScore,
-          totalSessions: user.totalSessions,
-          averageScore: user.averageScore,
-          domainStrengths: user.domainStrengths,
-          skillsGap: user.skillsGap,
-          lastInterviewDate: user.lastInterviewDate,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Update user profile
-   */
-  async updateProfile(req, res, next) {
-    try {
-      const { displayName, domain } = req.body;
-
       const user = await User.findById(req.userId);
-
-      if (!user) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'User not found',
-        });
-      }
-
-      if (displayName && displayName.length >= 2 && displayName.length <= 50) {
-        user.displayName = displayName;
-      }
-
-      if (domain && ['Software Engineering', 'Marketing', 'Finance', 'HR'].includes(domain)) {
-        user.domain = domain;
-      }
-
-      user.updatedAt = new Date();
-      await user.save();
-
-      res.status(200).json({
-        message: 'Profile updated successfully',
-        user: {
-          id: user._id,
-          displayName: user.displayName,
-          domain: user.domain,
-        },
-      });
-    } catch (error) {
-      next(error);
+      if (!user) return res.status(404).json({ error: 'Not Found', message: 'User not found' });
+      res.status(200).json({ user: user.toPublic() });
+    } catch (err) {
+      next(err);
     }
   }
 
-  /**
-   * Logout user (mainly client-side, server-side can invalidate sessions)
-   */
-  async logout(req, res, next) {
-    try {
-      res.status(200).json({
-        message: 'Logged out successfully',
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Refresh JWT session token
-   */
+  // Refresh token
   async refreshToken(req, res, next) {
     try {
       const user = await User.findById(req.userId);
-
-      if (!user) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'User not found',
-        });
-      }
-
-      // Generate new JWT session token
-      const sessionToken = jwt.sign(
-        { userId: user._id.toString(), email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRY || '7d' }
-      );
-
-      res.status(200).json({
-        message: 'Token refreshed successfully',
-        sessionToken,
-      });
-    } catch (error) {
-      next(error);
+      if (!user) return res.status(404).json({ error: 'Not Found', message: 'User not found' });
+      const token = signJwt(user);
+      res.status(200).json({ message: 'Token refreshed', sessionToken: token });
+    } catch (err) {
+      next(err);
     }
   }
 
-  /**
-   * Delete user account
-   */
+  // Update profile
+  async updateProfile(req, res, next) {
+    try {
+      const { displayName, domain } = req.body;
+      const user = await User.findById(req.userId);
+      if (!user) return res.status(404).json({ error: 'Not Found', message: 'User not found' });
+      if (displayName) user.displayName = displayName;
+      if (domain) user.domain = domain;
+      user.updatedAt = new Date();
+      await user.save();
+      res.status(200).json({ message: 'Profile updated', user: user.toPublic() });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Logout (stateless JWT - client should delete token)
+  async logout(req, res, next) {
+    try {
+      res.status(200).json({ message: 'Logged out' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Delete account
   async deleteAccount(req, res, next) {
     try {
       const user = await User.findById(req.userId);
-
-      if (!user) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'User not found',
-        });
-      }
-
-      // Delete user from database
+      if (!user) return res.status(404).json({ error: 'Not Found', message: 'User not found' });
       await User.deleteOne({ _id: req.userId });
-
-      // Delete user from Firebase Auth
       try {
-        await admin.auth().deleteUser(user.firebaseId);
-      } catch (error) {
-        console.warn('Failed to delete Firebase user:', error.message);
+        if (user.firebaseId) await admin.auth().deleteUser(user.firebaseId);
+      } catch (e) {
+        console.warn('Failed to delete Firebase user:', e.message);
       }
-
-      res.status(200).json({
-        message: 'Account deleted successfully',
-      });
-    } catch (error) {
-      next(error);
+      res.status(200).json({ message: 'Account deleted' });
+    } catch (err) {
+      next(err);
     }
   }
 }

@@ -2,10 +2,13 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
   {
+    // If user signed up via Firebase Google, firebaseId will be set.
+    // For local email/password users, firebaseId is optional.
     firebaseId: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
+      sparse: true,
       index: true,
     },
     email: {
@@ -13,6 +16,11 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
+    },
+    // Hashed password for local auth (optional for social logins)
+    password: {
+      type: String,
+      select: false,
     },
     displayName: {
       type: String,
@@ -26,6 +34,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
+    },
+    // Fine-grained permissions for the user. Populated from role by default.
+    permissions: {
+      type: [String],
+      default: [],
     },
     domain: {
       type: String,
@@ -95,6 +108,21 @@ const userSchema = new mongoose.Schema(
 // Index for efficient queries
 userSchema.index({ email: 1, createdAt: -1 });
 userSchema.index({ role: 1 });
+
+// Instance helper to return a safe public profile object
+userSchema.methods.toPublic = function () {
+  return {
+    id: this._id,
+    email: this.email,
+    displayName: this.displayName,
+    profilePicture: this.profilePicture,
+    role: this.role,
+    permissions: this.permissions || [],
+    domain: this.domain,
+    interviewReadinessScore: this.interviewReadinessScore,
+    totalSessions: this.totalSessions,
+  };
+};
 
 module.exports = mongoose.model('User', userSchema);
 
