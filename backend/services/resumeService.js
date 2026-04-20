@@ -2,7 +2,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const pdf = require('pdf-parse');
-const aiService = require('./aiService');
+const resumeParser = require('../utils/resumeParser');
+const aiService = require('./unifiedAIService');
 
 const uploadDir = path.join(__dirname, '../uploads');
 
@@ -56,40 +57,19 @@ class ResumeService {
   async extractTextFromResume(filePath) {
     try {
       const ext = path.extname(filePath).toLowerCase();
-
-      if (ext === '.pdf') {
-        return await this.extractFromPDF(filePath);
-      } else if (ext === '.txt') {
-        return fs.readFileSync(filePath, 'utf-8');
-      } else if (['.doc', '.docx'].includes(ext)) {
-        // For production, integrate docx library
-        return this.extractFromTextFile(filePath);
-      }
-
-      return '';
+      return await resumeParser.parseFile(filePath, ext);
     } catch (error) {
       console.error('Resume extraction error:', error.message);
       return '';
     }
   }
 
-  /**
-   * Extract text from PDF
-   */
+  // Legacy methods (internal) for backward compatibility if needed, 
+  // now delegated to the central utility.
   async extractFromPDF(filePath) {
-    try {
-      const dataBuffer = fs.readFileSync(filePath);
-      const data = await pdf(dataBuffer);
-      return data.text || '';
-    } catch (error) {
-      console.error('PDF extraction error:', error.message);
-      return '';
-    }
+    return this.extractTextFromResume(filePath);
   }
 
-  /**
-   * Extract from text file
-   */
   extractFromTextFile(filePath) {
     try {
       return fs.readFileSync(filePath, 'utf-8');

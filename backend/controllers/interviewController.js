@@ -8,7 +8,7 @@ const interviewService = require('../services/interviewService');
  */
 exports.startInterview = async (req, res, next) => {
   try {
-    const { domain, skills } = req.body;
+    const { domain, skills, difficulty } = req.body;
     const userId = req.userId;
 
     if (!domain) {
@@ -19,7 +19,7 @@ exports.startInterview = async (req, res, next) => {
       userId,
       domain,
       skills || [],
-      6 // Generate 6 questions by default
+      difficulty || 'medium'
     );
 
     res.status(201).json({

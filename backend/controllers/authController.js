@@ -73,7 +73,7 @@ class AuthController {
 
       // Check if user has a password (they might have registered via Google)
       if (!user.password) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: 'This account was created using Google. Please use Google Login.',
           debug_reason: 'Password missing for this account'
         });
@@ -195,8 +195,13 @@ class AuthController {
   // PROFILE
   async getCurrentUser(req, res, next) {
     try {
-      const user = await User.findById(req.userId);
-      if (!user) return res.status(404).json({ message: 'User not found' });
+      console.log('>>> [AUTH] /auth/me hit | req.user:', JSON.stringify(req.user));
+
+      const user = await User.findById(req.user.userId);
+      if (!user) {
+        console.warn('>>> [AUTH] /auth/me user not found for id:', req.user.userId);
+        return res.status(404).json({ message: 'User not found' });
+      }
 
       res.json({ user: user.toPublic() });
     } catch (err) {
@@ -209,7 +214,7 @@ class AuthController {
     try {
       const { name, photoURL } = req.body;
 
-      const user = await User.findById(req.userId);
+      const user = await User.findById(req.user.userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       if (name) user.name = name;
@@ -229,7 +234,7 @@ class AuthController {
   // REFRESH TOKEN
   async refreshToken(req, res, next) {
     try {
-      const user = await User.findById(req.userId);
+      const user = await User.findById(req.user.userId);
       if (!user) return res.status(404).json({ message: 'User not found' });
 
       const token = signJwt(user);

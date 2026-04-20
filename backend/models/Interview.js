@@ -52,6 +52,20 @@ const interviewSchema = new mongoose.Schema(
       type: Number,
       default: 5,
     },
+    questions: [
+      {
+        text: String,
+        type: {
+          type: String,
+          enum: ['mcq', 'descriptive', 'aptitude'],
+          default: 'descriptive'
+        },
+        options: [String], // for mcq/aptitude
+        correctAnswer: String, // for mcq/aptitude
+        explanation: String, // for aptitude
+        category: String
+      }
+    ],
     answers: [answerSchema],
     averageContentScore: { type: Number, min: 0, max: 100 },
     averageCommunicationScore: { type: Number, min: 0, max: 100 },
