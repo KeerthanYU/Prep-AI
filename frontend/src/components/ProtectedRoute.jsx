@@ -1,18 +1,16 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { isAuthenticated } from '../utils/auth';
 
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('authToken');
   const location = useLocation();
 
-  // Simple token check: Source of truth for routing
-  if (token) {
+  if (isAuthenticated()) {
     return children;
   }
 
-  // If no token, always redirect to login
-  return <Navigate to="/login" replace state={{ from: location }} />;
+  // If no token, redirect to signup
+  return <Navigate to="/signup" replace state={{ from: location }} />;
 };
 
 export default ProtectedRoute;

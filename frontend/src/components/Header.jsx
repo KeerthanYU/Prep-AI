@@ -27,7 +27,7 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-gray-600 hover:text-gray-900">
+            <Link to="/home" className="text-gray-600 hover:text-gray-900">
               Home
             </Link>
 
@@ -76,7 +76,7 @@ const Header = () => {
         {/* Mobile Navigation */}
         {isMobileOpen && (
           <div className="md:hidden mt-4 space-y-4">
-            <Link to="/" className="block text-gray-600 hover:text-gray-900">
+            <Link to="/home" className="block text-gray-600 hover:text-gray-900">
               Home
             </Link>
 

@@ -168,7 +168,7 @@ const Signup = () => {
                   Sign in
                 </Link>
               </p>
-              <Link to="/" className="inline-block text-gray-500 text-sm hover:text-gray-700">
+              <Link to="/home" className="inline-block text-gray-500 text-sm hover:text-gray-700">
                 ← Back to Home
               </Link>
             </div>

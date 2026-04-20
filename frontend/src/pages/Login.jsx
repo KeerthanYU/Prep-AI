@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Header from '../components/Header';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
@@ -156,6 +156,16 @@ const Login = () => {
             >
               Continue with Google
             </button>
+            
+            {/* Footer Links */}
+            <div className="pt-6 mt-6 border-t border-gray-200 text-center space-y-3">
+              <p className="text-gray-600 text-sm">
+                Don't have an account?{' '}
+                <Link to="/signup" className="text-blue-600 font-semibold hover:text-blue-700">
+                  Sign up
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </main>
