@@ -1,5 +1,5 @@
 import React, { useState, useContext, useCallback } from 'react';
-import axios from 'axios';
+import apiService from '../../services/apiService';
 import { InterviewContext } from '../../context/InterviewContext';
 
 const ResumeUploadScreen = () => {
@@ -42,11 +42,10 @@ const ResumeUploadScreen = () => {
     formData.append('resume', file);
 
     try {
-      // Assuming /api/resume/upload endpoint created earlier
-      const response = await axios.post('/api/resume/upload', formData, {
+      // Uses apiService which auto-attaches JWT from interceptor
+      const response = await apiService.post('/resume/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Ensure token is passed
         }
       });
 

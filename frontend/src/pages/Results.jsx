@@ -178,11 +178,18 @@ For detailed feedback, visit PrepMate AI dashboard.
                     <p className="text-gray-900">{answer.userAnswer}</p>
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm font-medium text-blue-900 mb-2">
-                      Feedback
+                  <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
+                       Feedback {answer.score === 100 ? '✅' : '❌'}
                     </p>
-                    <p className="text-blue-800">{answer.feedback}</p>
+                    <p className="text-blue-800 dark:text-blue-200">{answer.feedback}</p>
+                    
+                    {/* New: Logic Explanation for MCQs/Aptitude */}
+                    {answer.feedback && answer.feedback.includes('correct answer was') && (
+                      <div className="mt-2 p-3 bg-white/50 dark:bg-black/20 rounded border border-blue-200 dark:border-blue-800 text-sm">
+                        <span className="font-bold">Pro Tip:</span> Re-read the question carefully and check the reasoning provided above.
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 mt-4">

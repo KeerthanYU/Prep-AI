@@ -3,6 +3,7 @@ import { InterviewContext, INTERVIEW_STEPS } from '../context/InterviewContext';
 import GreetingScreen from '../components/interview/GreetingScreen';
 import RulesScreen from '../components/interview/RulesScreen';
 import ResumeUploadScreen from '../components/interview/ResumeUploadScreen';
+import DifficultySelectionScreen from '../components/interview/DifficultySelectionScreen';
 import InterviewScreen from '../components/interview/InterviewScreen';
 import ReportScreen from '../components/interview/ReportScreen';
 
@@ -17,6 +18,8 @@ const InterviewFlow = () => {
                 return <RulesScreen />;
             case INTERVIEW_STEPS.UPLOAD:
                 return <ResumeUploadScreen />;
+            case INTERVIEW_STEPS.DIFFICULTY:
+                return <DifficultySelectionScreen />;
             case INTERVIEW_STEPS.INTERVIEW:
                 return <InterviewScreen />;
             case INTERVIEW_STEPS.REPORT:

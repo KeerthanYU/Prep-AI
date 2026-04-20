@@ -6,6 +6,7 @@ export const INTERVIEW_STEPS = {
   GREETING: 'greeting',
   RULES: 'rules',
   UPLOAD: 'upload',
+  DIFFICULTY: 'difficulty',
   INTERVIEW: 'interview',
   REPORT: 'report'
 };
@@ -16,6 +17,7 @@ export const InterviewProvider = ({ children }) => {
   
   // Data
   const [resumeData, setResumeData] = useState({ skills: [], experience_level: '', domain: '' });
+  const [difficulty, setDifficulty] = useState('medium');
   const [interviewSession, setInterviewSession] = useState(null); // { id, questions: [] }
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [results, setResults] = useState(null);
@@ -56,6 +58,8 @@ export const InterviewProvider = ({ children }) => {
     prevStep,
     resumeData,
     setResumeData,
+    difficulty,
+    setDifficulty,
     interviewSession,
     setInterviewSession,
     currentQuestionIndex,

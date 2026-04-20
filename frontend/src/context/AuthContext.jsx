@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
   // ===============================
   const saveAuthData = (token, userData) => {
     console.log('>>> [AUTH DEBUG] Atomic Save:', { hasToken: !!token, hasUser: !!userData });
-    
+
     if (token) {
       localStorage.setItem('authToken', token);
       apiService.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const res = await apiService.post('/auth/login', { email, password });
-      
+
       // Normalize different backend response shapes
       const token = res.data.token || res.data.accessToken || res.data.data?.token;
       const userData = res.data.user || res.data.data?.user || res.data.data;
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const res = await apiService.post('/auth/google-login', { idToken });
-      
+
       const token = res.data.token || res.data.accessToken || res.data.data?.token;
       const userData = res.data.user || res.data.data?.user || res.data.data;
 
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const res = await apiService.post('/auth/signup', { email, password, name });
-      
+
       const token = res.data.token || res.data.accessToken || res.data.data?.token;
       const userData = res.data.user || res.data.data?.user || res.data.data;
 
