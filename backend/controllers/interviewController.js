@@ -102,3 +102,36 @@ exports.getInterviewDetails = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Get Dashboard Stats
+ */
+exports.getDashboardStats = async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const recentInterviews = await Interview.find({ userId: user._id })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('overallScore createdAt domain status');
+
+    res.status(200).json({
+      success: true,
+      message: 'Dashboard stats retrieved',
+      stats: {
+        interviewReadinessScore: user.interviewReadinessScore || 0,
+        totalSessions: user.totalSessions || 0,
+        averageScore: user.averageScore || 0,
+        domainStrengths: user.domainStrengths || {},
+        recentInterviews,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
